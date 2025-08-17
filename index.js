@@ -147,19 +147,50 @@ wss.on("connection", (ws) => {
 function handleUserRegister(clientId, message, ws) {
   const { username, avatar } = message;
 
-  // Check if username already exists
+  // Check if username already exists - if so, log them in instead
   for (const [id, userData] of users.entries()) {
     if (userData.username === username) {
-      return ws.send(
+      // User exists, log them in
+      console.log(`🔄 User "${username}" already exists, logging them in...`);
+
+      // Remove old connection if exists
+      users.delete(id);
+
+      // Update user with new clientId and status
+      const existingUser = {
+        ...userData,
+        id: clientId,
+        status: "online",
+        lastSeen: new Date().toISOString(),
+      };
+
+      users.set(clientId, existingUser);
+      clients.set(clientId, { ws, user: existingUser });
+
+      ws.send(
         JSON.stringify({
-          type: "ERROR",
-          error: "USERNAME_EXISTS",
-          message: `Username "${username}" already exists. Please choose a different username.`,
+          type: "USER_LOGGED_IN",
+          user: existingUser,
         })
       );
+
+      // Broadcast user came online
+      broadcastToAll(
+        {
+          type: "USER_STATUS_UPDATE",
+          userId: clientId,
+          status: "online",
+          lastSeen: existingUser.lastSeen,
+        },
+        clientId
+      );
+
+      return; // Exit early for login
     }
   }
 
+  // Username doesn't exist, create new user
+  console.log(`➕ Creating new user "${username}"`);
   const user = {
     id: clientId,
     username,
