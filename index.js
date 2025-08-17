@@ -7,7 +7,11 @@ const app = express();
 const port = 8080;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // Allow all origins for demo purposes
+  })
+);
 app.use(express.json());
 app.use(express.static(__dirname + "/public"));
 
